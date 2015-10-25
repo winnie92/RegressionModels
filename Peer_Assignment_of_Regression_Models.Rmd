@@ -1,0 +1,111 @@
+Peer Assignment of Regression Models  
+---
+author: "winnie"  
+
+date: "Sunday, October 25, 2015"  
+
+Overview
+---
+You work for Motor Trend, a magazine about the automobile industry. Looking at a data set of a collection of cars, they are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested in the following two questions:  
+
+- Is an automatic or manual transmission better for MPG?
+- Quantify the MPG difference between automatic and manual transmissions?  
+
+Analyse and Methods  
+---  
+- Do some exploratory data works before getting start.
+- Use the automatic transmission , the manual transmission and both as the preditors to make OLS regression of the outcome MPG respectively and make some tests and plots to find out which one or both is a better preditor.  
+- Understand the coefficients and residuals  
+- Because MPG might be influenced by many other variables in the dataset, make a multivariable regression is reasonable as well.
+
+Data Processing  
+---  
+
+```{r}
+library(datasets)
+data(mtcars)
+str(mtcars)
+```  
+- use help(mtcars) to find out what the variables meanIn the help file,we can see that >[, 9]am	 Transmission (0 = automatic, 1 = manual)  
+which indicates the transmission.  
+
+Analyse Processing -step1 
+---  
+```{r}
+mtcars0 <- transform(mtcars,am=factor(am))
+plot(mtcars0$am,mtcars0$mpg,main="MPG of automatic(0) and manual(1) transmission",xlab="transmission", ylab="MPG")
+```  
+- From the boxplot we can see that as the transmission changed from auto to manual,  the mean and range of the MPG both increase, so we can assume that manual transimission let the car go more far with manual transmisson.  
+```{r}
+attach(mtcars0)
+table(am)
+aggregate(mpg,by=list(am),FUN=mean)
+aggregate(mpg,by=list(am),FUN=sd)
+fit1 <- aov(mpg~am)
+summary(fit1)
+```  
+- the table tells us that we have 19 observations of auto transmisison and 13 of manual transimission.  
+- aggregate() function launch a Single factor analysis of variance on the data. we can see that auto transmisison has a mean of 17.14737 MPG while manual transimission has 24.39231, and auto has standard deviation of 3.833966 while manual transimission has 6.166504.  
+- The p value of F test in aov() function tells us that the transmission has significant influence on the MPG.  
+
+Analyse Processing -step2  
+---  
+```{r}
+attach(mtcars)
+m1 <- lm(mtcars$mpg~mtcars$am)
+summary(m1)
+par(mfrow=c(2,2))
+plot(m1)
+detach(mtcars)
+```  
+- We can see both the results of t test and dianosis graph indicated that such model of MPG as outcome and transmissions as regressors works well. p-value=0.000285 means that transmissions coefficient is significant.  
+- And residuals distributed randomly on both sides of line which means residuals meets the normal distribution, and the Q-Q graph with lots of points on the line means MPG are normally distributed, the graph of scale-location also indicates that the MPG  meets Homoscedasticity. 
+- **Interpret the coefficients in the models: when a car change from automatic transmission to manmual transimission(value increase from 0 to 1), the expected miles per gallon increase 7.245. ** 
+- **Problem: as the other variables might cause impacts on MPG as well, we can not draw a conclusion on this model because the other variables are not fixed, so we need to make a more reasonable model to interpret the coefficient.**  
+
+Analyse Processing -step3 
+---  
+```{r}
+attach(mtcars)
+m2 <- lm(mpg~cyl+disp+hp+drat+wt+qsec+vs+am+gear+carb)
+library(car)
+vif(m2)
+sqrt(vif(m2))>2
+```   
+- make a regression model of all of the variables and do some tests to pick them in or out one by one.
+- vif() function in the car package, which means Variance Inflation Factor, is useful for validate multicollinearity in the mutivariable regression model.  
+- sqrt(vif)>2 = there are  multicollinearity in the model. From the result above, except for drat, all of the others are related to each other.
+```{r}
+mtcars1 <- mtcars[,-1]
+correlation <- abs(cor(mtcars1))
+class(correlation)
+diag(correlation) <- 0
+which(correlation>0.8,arr.ind=T)
+```  
+- the originalvariables are seriouly related to each other because many of their R value > 0.8  
+```{r}  
+
+full_model <- lm(mpg~cyl+disp+hp+drat+wt+qsec+vs+am+gear+carb)
+summary(full_model)
+reduce_model <- step(full_model,direction="backward")
+min_model <- lm(mpg~am+qsec+wt)
+summary(min_model)
+```  
+- use step() to make regression model step by step, it will automatically reduce the variables by AIC criteria, so all of the coefficient in min_model are significant.  
+- Remove the intercept in min_model  because it is not significant
+```{r} 
+min_model2 <- lm(mpg~am+qsec+wt+0)
+summary(min_model2)
+```
+- **interpretation of a coefficient in min_model: When the values of weight and qsec are fixed, if a car change from automatic transmission to manmual transimission(value increase from 0 to 1), the miles per gallon increase 4.2995.**  
+
+**Make the Residuals and Dianogsis plot**  
+---  
+```{r}  
+plot(min_model2)
+```  
+- We can see from the dianosis graph that such model of MPG as outcome and am, qsec and weight as regressors works well. residuals distributed randomly on both sides of line which means residuals meets the normal distribution, and the Q-Q graph with lots of points on the line means MPG are normally distributed, the graph of scale-location also indicates that the MPG  meets Homoscedasticity.  
+
+
+
+
